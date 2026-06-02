@@ -154,6 +154,3 @@ scikit-learn
 ```
 
 
----
-
-*This project is part of an applied computer vision portfolio demonstrating segmentation research on geoscientific subsurface imaging data — directly relevant to geotechnical AI applications.*

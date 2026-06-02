@@ -1,7 +1,7 @@
 # TGS Salt Segmentation — U-Net with ResNet18 & ResNet34
 
 **Author:** Sai Harsha Chapala  
-**Dataset:** [TGS Salt Identification Challenge — Kaggle](https://www.kaggle.com/competitions/tgs-salt-identification-challenge)  
+**Dataset:** [Salt Identification Challenge — Kaggle](https://www.kaggle.com/competitions/tgs-salt-identification-challenge)  
 **Framework:** PyTorch + segmentation_models_pytorch  
 **Published Paper:** [DOI: 10.48047/IJFANS/V11/I12/215](https://doi.org/10.48047/IJFANS/V11/I12/215) — IJFANS, Vol 11, Iss 12, Dec 2022
 

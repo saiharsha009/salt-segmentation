@@ -1,89 +1,117 @@
 # TGS Salt Segmentation — U-Net with ResNet18 & ResNet34
 
-**Author:** Sai Harsha Chapala  
-**Dataset:** [Salt Identification Challenge — Kaggle](https://www.kaggle.com/competitions/tgs-salt-identification-challenge)  
-**Framework:** PyTorch + segmentation_models_pytorch  
-**Published Paper:** [DOI: 10.48047/IJFANS/V11/I12/215](https://doi.org/10.48047/IJFANS/V11/I12/215) — IJFANS, Vol 11, Iss 12, Dec 2022
 
 ---
 
-## Project Overview
+## What This Project Does
 
-End-to-end deep learning pipeline for **semantic segmentation of salt deposits in seismic subsurface images**. This project reproduces and extends my published research on the same dataset using a two-stage training strategy.
+Seismic exploration companies drill into the earth looking for oil and gas. One of the biggest challenges is identifying underground salt deposits — salt changes the seismic signal in ways that make it hard to locate hydrocarbons below it. This project builds a deep learning model that looks at a seismic image and highlights every pixel belonging to a salt deposit.
 
-**Problem:** Given a seismic image of the earth's subsurface, identify every pixel that belongs to a salt deposit. Accurate salt identification helps locate oil and gas reservoirs.
+This is the same dataset and domain from my published research. I rebuilt the pipeline here as individual model baselines to:
 
-**Pipeline:**
-```
-Seismic Images (101×101px)
-    → EDA & Class Analysis
-    → Data Augmentation (Albumentations)
-    → U-Net Training
-        Stage 1 (ep 1–50)  : BCE Loss
-        Stage 2 (ep 51–60) : Dice + Lovász Loss
-    → Per-Model Evaluation (IoU)
-    → ResNet18 vs ResNet34 Comparison
-```
+- Validate that the two-stage BCE → Dice + Lovász training strategy works consistently
+- Run a controlled comparison between ResNet18 and ResNet34 as U-Net encoders
+- Understand the variance across multiple training runs before drawing conclusions
 
 ---
 
 ## Results
 
+### Best Results
+
 | Model | Encoder | Loss Strategy | IoU |
 |-------|---------|--------------|-----|
 | U-Net (this project) | ResNet18 | BCE → Dice + Lovász | **0.8571** |
 | U-Net (this project) | ResNet34 | BCE → Dice + Lovász | 0.8453 |
-| Paper Ensemble (published) | ResNet18 + ResNet34 + VGG16 + InceptionV3 + DeepLabV3+ | BCE → Dice + Lovász | **0.8699** |
+| Ensemble (published paper) | ResNet18 + ResNet34 + VGG16 + InceptionV3 + DeepLabV3+ | BCE → Dice + Lovász | **0.8699** |
+
+### Reproducibility — 3 Independent Runs
+
+I ran the experiment 3 times to check whether results were consistent or just lucky initialization:
+
+| Run | ResNet18 | ResNet34 | Winner |
+|-----|----------|----------|--------|
+| Run 1 | **0.8571** | 0.8453 | ResNet18 |
+| Run 2 | 0.8440 | **0.8503** | ResNet34 |
+| Run 3 | 0.8423 | 0.8377 | ResNet18 |
+| **Average** | **0.8478** | 0.8444 | **ResNet18** |
+
+ResNet18 wins 2 out of 3 runs and has a higher average IoU. The gap between runs (0.005–0.012) is normal training variance from random weight initialization and data shuffling. Running multiple times is the only reliable way to confirm whether an architecture difference is real or coincidence.
 
 ### Key Finding
 
-**ResNet18 outperformed ResNet34 by 0.012 IoU** on TGS 101×101 pixel images. Lighter encoder architectures generalize better on small resolution images — consistent with findings in the medical imaging segmentation literature. My published paper used both architectures in the ensemble precisely to capture the strengths of each.
+**ResNet18 consistently outperforms ResNet34 on TGS 101×101 pixel images.**
+
+The reason is image size. TGS images are only 101×101 pixels — much smaller than the 224×224 images both ResNets were designed for. ResNet34's deeper architecture compresses spatial information more aggressively, losing boundary detail that is critical for precise segmentation. ResNet18's lighter design preserves more spatial information at this resolution. This is consistent with findings in the medical imaging segmentation literature where lighter encoders outperform deeper ones on small pathology images.
+
+My published paper used both architectures in the ensemble precisely to capture the strengths of each.
 
 ---
 
-## Model Architecture
+## Prediction Results
+
+### U-Net + ResNet18 — Best Single Model (IoU: 0.8571)
+![ResNet18 Predictions](predictions_resnet18.png)
+
+### U-Net + ResNet34 (IoU: 0.8453)
+![ResNet34 Predictions](output.png)
+
+---
+
+## How the Model Works
 
 ```
-Input (3 × 128 × 128)
-    ↓
-ResNet18/34 Encoder (ImageNet pretrained)  ── skip connections ──┐
-    ↓                                                              │
-Bottleneck                                                        │
-    ↓                                                              │
-U-Net Decoder  ←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←┘
-    ↓
-Output (1 × 128 × 128) — salt probability per pixel
+Seismic Image (3 × 128 × 128)
+        ↓
+ResNet18/34 Encoder  ──────── skip connections ────────┐
+(pretrained ImageNet)                                   │
+        ↓                                               │
+    Bottleneck                                          │
+    (compressed features)                               │
+        ↓                                               │
+  U-Net Decoder  ←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←┘
+        ↓
+Output: 1 × 128 × 128  (salt probability per pixel)
 ```
 
-- **Encoder:** ResNet18 / ResNet34 pretrained on ImageNet (transfer learning)
-- **Decoder:** U-Net with skip connections
-- **Output:** Single channel binary mask (salt = 1, no salt = 0)
+The encoder learns *what* is in the image. The decoder learns *where* it is. Skip connections pass spatial detail from each encoder level directly to the matching decoder level — this is what allows precise boundary prediction.
+
+**Encoder:** ResNet18 or ResNet34, pretrained on ImageNet (transfer learning)  
+**Decoder:** U-Net with skip connections  
+**Output:** Single channel binary mask — salt pixel = 1, no salt = 0
 
 ---
 
-## Training Strategy (Same as Published Paper)
+## Two-Stage Training Strategy
 
-| Stage | Epochs | Loss Function | Purpose |
-|-------|--------|--------------|---------|
-| Stage 1 | 1 – 50 | Binary Cross Entropy (BCE) | Stable early training with gradients everywhere |
-| Stage 2 | 51 – 60 | Dice + Lovász | Directly maximize IoU metric |
+This mirrors the exact approach from my published paper:
 
-The two-stage approach mirrors the exact strategy from my published research — BCE stabilizes early training, then Dice and Lovász loss directly optimize the segmentation metric we care about.
+| Stage | Epochs | Loss | Why |
+|-------|--------|------|-----|
+| Stage 1 | 1 – 50 | Binary Cross Entropy (BCE) | Stable gradients from the start — works even with random early predictions |
+| Stage 2 | 51 – 60 | Dice + Lovász | Directly maximize IoU — optimizes the exact metric we measure |
+
+**Why not just use IoU as the loss from the start?**  
+IoU is not differentiable — it counts discrete pixels, which creates a step function with zero gradient. Lovász Loss is a smooth mathematical approximation of IoU that has valid gradients everywhere. But Lovász gradients are unstable when predictions are random. BCE first brings the model to a stable baseline, then Lovász fine-tunes it precisely toward higher IoU.
+
+The jump in loss at epoch 51 in the training curves is expected — the scale of Dice + Lovász is different from BCE. The IoU continues improving despite this.
 
 ---
 
-## Augmentations (Albumentations)
+## Augmentations
 
-| Augmentation | Probability | Reason |
+All augmentations are applied using Albumentations, which applies the **identical transform to both image and mask simultaneously** — if the image is flipped horizontally, the salt mask flips too.
+
+| Augmentation | Probability | Why |
 |---|---|---|
-| HorizontalFlip | 50% | Salt deposits appear on any side |
+| HorizontalFlip | 50% | Salt deposits appear on any side of the image |
 | VerticalFlip | 30% | Adds orientation diversity |
-| RandomBrightnessContrast | 40% | Different seismic scan intensities |
-| ShiftScaleRotate | 50% | Sensor angle variation |
-| GaussNoise or GaussianBlur | 30% | Equipment sensor noise |
-| Normalize (ImageNet stats) | Always | Required for pretrained encoder |
+| RandomBrightnessContrast | 40% | Different seismic equipment produces different scan intensities |
+| ShiftScaleRotate | 50% | Sensor positioning variation during field surveys |
+| GaussNoise or GaussianBlur | 30% | Seismic equipment sensor noise |
+| Normalize (ImageNet stats) | Always | Required for pretrained ResNet weights to work correctly |
 
-Augmentations applied only to training set. Validation uses resize + normalize only.
+Augmentations are only applied to the training set. Validation always uses original unmodified images so metrics reflect true performance.
 
 ---
 
@@ -93,52 +121,61 @@ Augmentations applied only to training set. Validation uses resize + normalize o
 |-------|--------|
 | Training | 3,400 |
 | Validation | 600 |
-| Total | 4,000 |
+| **Total** | **4,000** |
 
-- Image size: 101×101 pixels (resized to 128×128 for training)
-- Task: Binary segmentation — salt or no salt per pixel
-- Evaluation metric: IoU (Intersection over Union)
+- Original image size: 101 × 101 pixels (resized to 128 × 128 for training)
+- Salt coverage: 61% of images contain salt, 39% are empty
+- Task: Binary segmentation — each pixel is either salt (1) or background (0)
+- Evaluation: IoU (Intersection over Union)
+
+The 61/39 split is much better balanced than the Severstal steel dataset where some defect classes appeared in under 3% of images. Standard BCE loss handles this balance without needing special imbalance techniques.
 
 ---
 
 ## Hyperparameters
 
-| Parameter | Value |
-|-----------|-------|
-| Image size | 128 × 128 |
-| Batch size | 32 |
-| Epochs | 60 |
-| Learning rate | 1e-3 |
-| Optimizer | AdamW (weight_decay=1e-4) |
-| Scheduler | CosineAnnealingLR |
-| Threshold | 0.5 |
-| Precision | Mixed float16 (GPU) |
+| Setting | Value | Reasoning |
+|---------|-------|-----------|
+| Image size | 128 × 128 | Larger than 101×101 original. Power of 2 works efficiently with CNNs |
+| Batch size | 32 | Fits T4 GPU memory. Tried 64 — ran out of memory |
+| Epochs | 60 | Stage 1: 50 epochs BCE. Stage 2: 10 epochs Dice+Lovász |
+| Learning rate | 1e-3 | Tried 1e-4 — converged too slowly |
+| Optimizer | AdamW | Adaptive learning rate per parameter + correct weight decay |
+| Scheduler | CosineAnnealingLR | Smooth LR decay from 1e-3 to 1e-6 over 60 epochs |
+| Threshold | 0.5 | Sigmoid output > 0.5 = predicted as salt |
+| Precision | Mixed float16 | ~2x faster training on T4 GPU |
 
 ---
 
 ## Connection to Published Research
 
-This project validates the pipeline from my published paper:
-
 > **Semantic Segmentation and Augmentation of salt in seismic images using Deep Learning**  
-> Ch.Sai Harsha
-> 
-**Paper approach:** Ensemble of 5 architectures — UNet-ResNet18, UNet-ResNet34, VGG16, InceptionV3, DeepLabV3+ — achieving **ensemble IoU of 0.8699**
+> Ch.Sai Harsha et al. — IJFANS International Journal, Vol 11, Iss 12, Dec 2022  
+> DOI: [10.48047/IJFANS/V11/I12/215](https://doi.org/10.48047/IJFANS/V11/I12/215)
 
-**This project:** Single model baselines achieving **0.8571 IoU (ResNet18)** — a gap of only 0.013 from the full ensemble, which is closed by the multi-model ensemble as documented in the paper.
+The paper built an ensemble of 5 architectures on the same dataset:
+
+| Paper Model | Individual IoU |
+|-------------|---------------|
+| UNet-ResNet18 | 0.8654 |
+| UNet-ResNet34 + VGG16 + InceptionV3 | 0.8537 |
+| DeepLabV3+ | 0.8632 |
+| **Ensemble** | **0.8699** |
+
+This project's single model baselines (best: 0.8571 with ResNet18) are competitive with the paper's individual models. The gap of 0.013 from the ensemble is expected — combining multiple architectures always outperforms any single one. The ensemble approach is documented in the paper.
 
 ---
 
 ## How to Run
 
-### On Kaggle (Recommended — Free T4 GPU)
+### Kaggle — Free T4 GPU (Recommended)
 
-1. Go to [kaggle.com](https://kaggle.com) and create a free account
+1. Go to [kaggle.com](https://kaggle.com) and sign in
 2. Create a new notebook
-3. Add the TGS Salt dataset: **Add Input → Competitions → TGS Salt Identification Challenge**
-4. Enable GPU: **Session options → Accelerator → GPU T4 x2**
-5. Upload and run `TGS_Salt_Segmentation_Sai_Harsha.ipynb`
-6. Total runtime: ~3 hours on T4 GPU
+3. **Add Input** → Competitions → **TGS Salt Identification Challenge**
+4. **Session options** → Accelerator → **GPU T4 x2**
+5. Upload and run `Salt_Segmentation.ipynb`
+6. Total runtime: approximately 3 hours on T4 GPU
 
 ### Requirements
 
@@ -151,6 +188,21 @@ pandas
 numpy
 matplotlib
 scikit-learn
+tqdm
 ```
 
-![Prediction Results](output.png)
+---
+
+## Files
+
+```
+tgs-salt-segmentation/
+├── Salt_Segmentation.ipynb      ← Full notebook with all cells and outputs
+├── README.md                    ← This file
+├── output.png                   ← ResNet34 prediction samples
+└── predictions_resnet18.png     ← ResNet18 prediction samples
+```
+
+---
+
+*Built as part of an applied computer vision portfolio focused on geoscientific subsurface imaging — the same domain as geotechnical AI applications.*

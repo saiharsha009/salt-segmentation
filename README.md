@@ -50,11 +50,9 @@ My published paper used both architectures in the ensemble precisely to capture 
 
 ## Prediction Results
 
-### U-Net + ResNet18 — Best Single Model (IoU: 0.8571)
-![ResNet18 Predictions](predictions_resnet18.png)
 
-### U-Net + ResNet34 (IoU: 0.8453)
-![ResNet34 Predictions](output.png)
+![ResNet18 Predictions](output.png)
+
 
 ---
 

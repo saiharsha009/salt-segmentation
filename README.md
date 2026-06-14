@@ -51,7 +51,7 @@ My published paper used both architectures in the ensemble precisely to capture 
 ## Prediction Results
 
 
-![ResNet18 Predictions](output.png)
+![ResNet18 Predictions](result.png)
 
 
 ---

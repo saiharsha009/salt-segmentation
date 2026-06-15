@@ -58,7 +58,7 @@ My published paper used both architectures in the ensemble precisely to capture 
 
 ## How the Model Works
 
-![Architecture](architecture.PNG)
+![Architecture](architecture.png)
 The encoder learns *what* is in the image. The decoder learns *where* it is. Skip connections pass spatial detail from each encoder level directly to the matching decoder level — this is what allows precise boundary prediction.
 
 **Encoder:** ResNet18 or ResNet34, pretrained on ImageNet (transfer learning)  

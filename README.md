@@ -58,20 +58,7 @@ My published paper used both architectures in the ensemble precisely to capture 
 
 ## How the Model Works
 
-```
-Seismic Image (3 × 128 × 128)
-        ↓
-ResNet18/34 Encoder  ──────── skip connections ────────┐
-(pretrained ImageNet)                                   │
-        ↓                                               │
-    Bottleneck                                          │
-    (compressed features)                               │
-        ↓                                               │
-  U-Net Decoder  ←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←←┘
-        ↓
-Output: 1 × 128 × 128  (salt probability per pixel)
-```
-
+![Architecture](architecture.PNG)
 The encoder learns *what* is in the image. The decoder learns *where* it is. Skip connections pass spatial detail from each encoder level directly to the matching decoder level — this is what allows precise boundary prediction.
 
 **Encoder:** ResNet18 or ResNet34, pretrained on ImageNet (transfer learning)  

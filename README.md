@@ -5,7 +5,7 @@
 
 ## What This Project Does
 
-Seismic exploration companies drill into the earth looking for oil and gas. One of the biggest challenges is identifying underground salt deposits — salt changes the seismic signal in ways that make it hard to locate hydrocarbons below it. This project builds a deep learning model that looks at a seismic image and highlights every pixel belonging to a salt deposit.
+Seismic exploration companies drill into the earth looking for oil and gas. One of the biggest challenges is identifying underground salt deposits salt changes the seismic signal in ways that make it hard to locate hydrocarbons below it. This project builds a deep learning model that looks at a seismic image and highlights every pixel belonging to a salt deposit.
 
 This is the same dataset and domain from my published research. I rebuilt the pipeline here as individual model baselines to:
 

@@ -113,7 +113,6 @@ Augmentations are only applied to the training set. Validation always uses origi
 - Task: Binary segmentation — each pixel is either salt (1) or background (0)
 - Evaluation: IoU (Intersection over Union)
 
-The 61/39 split is much better balanced than the Severstal steel dataset where some defect classes appeared in under 3% of images. Standard BCE loss handles this balance without needing special imbalance techniques.
 
 ---
 
